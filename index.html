@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Planning Pilot">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Planning Progress Pilot</title>
+    
+    <!-- MANIFEST MEJORADO PARA PWA -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Iconos para PWA -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700&family=Outfit:wght@800;900&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #0f172a; --bg-secondary: #1e293b; --bg-card: #334155;
+            --text-primary: #f1f5f9; --text-secondary: #cbd5e1;
+            --accent-blue: #3b82f6; --accent-green: #10b981; --accent-yellow: #fbbf24;
+            --accent-purple: #8b5cf6; --accent-orange: #f97316;
+            --shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        body {
+            font-family: 'Lexend', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-primary); min-height: 100vh; padding: 20px; line-height: 1.6;
+            -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 40px; animation: slideDown 0.6s ease-out; }
+        
+        h1 {
+            font-family: 'Outfit', sans-serif; font-weight: 900; font-size: clamp(2rem, 5vw, 3.5rem);
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 10px;
+        }
+        
+        .subtitle { color: var(--text-secondary); font-size: 1.1rem; font-weight: 300; }
+        .grades-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 40px; }
+        
+        .grade-card {
+            background: var(--bg-card); border-radius: 16px; padding: 24px; box-shadow: var(--shadow);
+            border: 2px solid transparent; transition: all 0.3s ease; cursor: pointer; animation: fadeInUp 0.6s ease-out backwards;
+        }
+        .grade-card:hover { transform: translateY(-4px); border-color: var(--accent-blue); }
+        
+        .grade-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .grade-name { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 1.8rem; }
+        .cefr-badge { background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue)); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        
+        .current-status { background: var(--bg-secondary); padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+        .status-label { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; }
+        .status-value { font-size: 1.1rem; font-weight: 600; color: var(--accent-green); }
+        
+        .lesson-progress { display: flex; gap: 8px; margin-bottom: 16px; }
+        .lesson-dot { flex: 1; height: 8px; background: var(--bg-secondary); border-radius: 4px; }
+        .lesson-dot.completed { background: var(--accent-green); }
+        .lesson-dot.current { background: var(--accent-yellow); animation: pulse 2s infinite; }
+        
+        .btn { padding: 12px; border: none; border-radius: 10px; font-family: 'Lexend', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); color: white; }
+        .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--bg-card); }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--bg-secondary); border-radius: 20px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 32px; animation: scaleIn 0.3s ease-out; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .modal-title { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 800; }
+        .close-btn { background: none; border: none; color: var(--text-secondary); font-size: 2rem; cursor: pointer; }
+        
+        /* Etapas / Stages */
+        .stage-info { background: var(--bg-card); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .stage-title { font-weight: 600; margin-bottom: 12px; color: var(--accent-blue); }
+        .stages-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+        
+        .stage-box {
+            background: var(--bg-secondary); padding: 12px 4px; border-radius: 8px; text-align: center;
+            border: 2px solid transparent; transition: all 0.3s ease; cursor: pointer; position: relative;
+        }
+        .stage-box:hover { transform: scale(1.05); border-color: var(--text-secondary); background: var(--bg-card); }
+        
+        .stage-box.completed { background: var(--accent-green); color: white; border-color: var(--accent-green); }
+        .stage-box.completed:hover { opacity: 0.9; }
+        
+        .stage-box.current { border-color: var(--accent-yellow); background: rgba(251, 191, 36, 0.2); }
+        .stage-box.current::after {
+            content: '✓'; position: absolute; top: -5px; right: -5px; background: var(--accent-yellow);
+            color: #000; font-size: 0.7rem; font-weight: bold; border-radius: 50%; width: 18px; height: 18px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .stage-number { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+        .stage-name { font-size: 0.7rem; color: var(--text-secondary); }
+        .stage-box.completed .stage-name { color: rgba(255,255,255,0.9); }
+
+        .lesson-selector { display: grid; gap: 16px; margin-bottom: 24px; }
+        .lesson-item { background: var(--bg-card); padding: 20px; border-radius: 12px; border: 2px solid transparent; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .lesson-item:hover { border-color: var(--accent-blue); }
+        .lesson-item.current { border-color: var(--accent-yellow); }
+        .lesson-status { padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .lesson-status.current { background: var(--accent-yellow); color: var(--bg-primary); }
+        .lesson-status.completed { background: var(--accent-green); color: white; }
+        
+        .review-section { background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(239, 68, 68, 0.1)); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid var(--accent-orange); }
+        .review-btn { background: var(--bg-card); border: 2px solid var(--accent-orange); color: var(--text-primary); padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 10px; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        
+        @media (max-width: 768px) {
+            .stages-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Planning Progress Pilot</h1>
+            <p class="subtitle">English Curriculum Tracker</p>
+        </header>
+        
+        <div class="quick-actions" style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-bottom: 30px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" onclick="exportData()">📥 Exportar</button>
+            <button class="btn btn-secondary" onclick="importData()">📤 Importar</button>
+            <button class="btn btn-secondary" onclick="resetAllData()">🔄 Reiniciar</button>
+        </div>
+        
+        <div class="grades-grid" id="gradesGrid"></div>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal" id="gradeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle"></h2>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            
+            <div class="stage-info">
+                <div class="stage-title">📍 6 Etapas AoA (Toca la actual para completar)</div>
+                <div class="stages-grid" id="stagesGrid"></div>
+            </div>
+            
+            <div id="scenarioInfo" style="margin-bottom: 20px; background: var(--bg-card); padding: 15px; border-radius: 10px;"></div>
+            
+            <div class="lesson-selector" id="lessonSelector"></div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-primary" onclick="markLessonComplete()" style="flex:1;">✓ Marcar Etapa/Lección Completada</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const grades = [
+            { id: 'prek', name: 'PreK', cefr: 'Pre A1.1', scenario: 'Meeting New Friends', theme: 'Meeting My Friends' },
+            { id: 'k', name: 'Kinder', cefr: 'Pre A1.2', scenario: 'School Day', theme: 'Lets Listen' },
+            { id: 'g1', name: '1er Grado', cefr: 'Pre A1.3', scenario: 'All Week Long', theme: 'Today Is Tuesday' },
+            { id: 'g2', name: '2do Grado', cefr: 'Pre A1.4', scenario: 'School Days', theme: 'Yesterday Was Wednesday' },
+            { id: 'g3', name: '3er Grado', cefr: 'A1.1', scenario: 'Places I Go', theme: 'I am at School' },
+            { id: 'g4', name: '4to Grado', cefr: 'A1.2', scenario: 'Neighborhood', theme: 'My Favorite' },
+            { id: 'g5', name: '5to Grado', cefr: 'A1.3', scenario: 'Instructions', theme: 'Cut the Paper' },
+            { id: 'g6', name: '6to Grado', cefr: 'A2.1', scenario: 'Reporting', theme: 'Diverse Community' }
+        ];
+        
+        const lessons = [
+            { id: 1, name: 'Lesson 1', skill: 'Listening' },
+            { id: 2, name: 'Lesson 2', skill: 'Reading' },
+            { id: 3, name: 'Lesson 3', skill: 'Speaking' },
+            { id: 4, name: 'Lesson 4', skill: 'Writing' },
+            { id: 5, name: 'Lesson 5', skill: 'Mediation' }
+        ];
+        
+        const aoaStages = [
+            { id: 1, name: 'Warm-up' },
+            { id: 2, name: 'Presentation' },
+            { id: 3, name: 'Preparation' },
+            { id: 4, name: 'Performance' },
+            { id: 5, name: 'Assessment' },
+            { id: 6, name: 'Reflection' }
+        ];
+        
+        let currentGradeId = null;
+        
+        function initializeData() {
+            if (!localStorage.getItem('gradeProgress')) {
+                const initialData = {};
+                grades.forEach(grade => {
+                    initialData[grade.id] = { currentLesson: 1, currentStage: 1, completedLessons: [] };
+                });
+                localStorage.setItem('gradeProgress', JSON.stringify(initialData));
+            }
+        }
+        
+        function getProgress(gradeId) { return JSON.parse(localStorage.getItem('gradeProgress'))[gradeId]; }
+        
+        function updateProgress(gradeId, updates) {
+            const data = JSON.parse(localStorage.getItem('gradeProgress'));
+            data[gradeId] = { ...data[gradeId], ...updates };
+            localStorage.setItem('gradeProgress', JSON.stringify(data));
+            renderGrades();
+        }
+        
+        function renderGrades() {
+            const grid = document.getElementById('gradesGrid');
+            grid.innerHTML = '';
+            grades.forEach(grade => {
+                const progress = getProgress(grade.id);
+                const card = document.createElement('div');
+                card.className = 'grade-card';
+                card.onclick = () => openGradeModal(grade.id);
+                const currentLesson = lessons.find(l => l.id === progress.currentLesson);
+                
+                card.innerHTML = `
+                    <div class="grade-header">
+                        <div class="grade-name">${grade.name}</div>
+                        <div class="cefr-badge">${grade.cefr}</div>
+                    </div>
+                    <div class="current-status">
+                        <div class="status-label">📌 Estás en: ${currentLesson ? currentLesson.name : 'Completado'}</div>
+                        <div class="status-value" style="font-size:0.9rem">Etapa ${progress.currentStage}/6 - ${grade.scenario}</div>
+                    </div>
+                    <div class="lesson-progress">
+                        ${lessons.map(l => `<div class="lesson-dot ${progress.completedLessons.includes(l.id) ? 'completed' : (l.id === progress.currentLesson ? 'current' : '')}"></div>`).join('')}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+        
+        function openGradeModal(gradeId) {
+            currentGradeId = gradeId;
+            const grade = grades.find(g => g.id === gradeId);
+            const progress = getProgress(gradeId);
+            
+            document.getElementById('modalTitle').textContent = `${grade.name} - ${grade.cefr}`;
+            document.getElementById('scenarioInfo').innerHTML = `<div class="status-label">📖 Scenario: <span style="color:white">${grade.scenario}</span></div><div class="status-label" style="margin-top:5px">🎯 Theme: <span style="color:white">${grade.theme}</span></div>`;
+            
+            renderStages(progress);
+            renderLessons(progress);
+            document.getElementById('gradeModal').classList.add('active');
+        }
+        
+        function renderStages(progress) {
+            const grid = document.getElementById('stagesGrid');
+            grid.innerHTML = '';
+            aoaStages.forEach(stage => {
+                const box = document.createElement('div');
+                box.className = 'stage-box';
+                
+                if (stage.id < progress.currentStage) box.classList.add('completed');
+                else if (stage.id === progress.currentStage) box.classList.add('current');
+                
+                box.innerHTML = `<div class="stage-number">${stage.id}</div><div class="stage-name">${stage.name}</div>`;
+                box.onclick = () => handleStageClick(stage.id);
+                
+                grid.appendChild(box);
+            });
+        }
+        
+        function handleStageClick(stageId) {
+            const progress = getProgress(currentGradeId);
+            
+            if (stageId === progress.currentStage) {
+                if (confirm(`¿Marcar Etapa ${stageId} (${aoaStages[stageId-1].name}) como COMPLETADA?`)) {
+                    advanceStage();
+                }
+            }
+            else if (stageId < progress.currentStage) {
+                if (confirm(`Esta etapa ya fue completada. ¿Volver a la Etapa ${stageId} para repasar?`)) {
+                    updateProgress(currentGradeId, { currentStage: stageId });
+                    openGradeModal(currentGradeId);
+                }
+            }
+            else {
+                alert('⚠️ Debes completar las etapas anteriores primero.');
+            }
+        }
+        
+        function advanceStage() {
+            const progress = getProgress(currentGradeId);
+            if (progress.currentStage < 6) {
+                updateProgress(currentGradeId, { currentStage: progress.currentStage + 1 });
+                openGradeModal(currentGradeId);
+            } else {
+                markLessonComplete();
+            }
+        }
+        
+        function renderLessons(progress) {
+            const selector = document.getElementById('lessonSelector');
+            selector.innerHTML = '';
+            lessons.forEach(lesson => {
+                const item = document.createElement('div');
+                item.className = 'lesson-item';
+                if (progress.completedLessons.includes(lesson.id)) item.classList.add('completed');
+                if (lesson.id === progress.currentLesson) item.classList.add('current');
+                
+                item.innerHTML = `
+                    <div class="lesson-info"><div class="lesson-title">${lesson.name}</div><div class="lesson-skill" style="font-size:0.8rem;opacity:0.7">${lesson.skill}</div></div>
+                    <div class="lesson-status ${lesson.id === progress.currentLesson ? 'current' : (progress.completedLessons.includes(lesson.id) ? 'completed' : '')}">${lesson.id === progress.currentLesson ? 'Activa' : (progress.completedLessons.includes(lesson.id) ? 'Ok' : 'Pendiente')}</div>
+                `;
+                item.onclick = () => selectLesson(lesson.id);
+                selector.appendChild(item);
+            });
+        }
+        
+        function selectLesson(lessonId) {
+            const progress = getProgress(currentGradeId);
+            if (!progress.completedLessons.includes(lessonId)) {
+                 if (lessonId !== progress.currentLesson && !confirm('¿Saltar a esta lección?')) return;
+                 updateProgress(currentGradeId, { currentLesson: lessonId, currentStage: 1 });
+                 openGradeModal(currentGradeId);
+            } else {
+                 alert('Lección ya completada.');
+            }
+        }
+        
+        function markLessonComplete() {
+            const progress = getProgress(currentGradeId);
+            if (progress.currentStage < 6) {
+                advanceStage();
+            } else {
+                const completedLessons = [...progress.completedLessons, progress.currentLesson];
+                const nextLesson = progress.currentLesson < 5 ? progress.currentLesson + 1 : 1;
+                updateProgress(currentGradeId, { completedLessons, currentLesson: nextLesson, currentStage: 1 });
+                alert('✓ Lección completada!');
+                closeModal();
+            }
+        }
+        
+        function closeModal() { document.getElementById('gradeModal').classList.remove('active'); }
+        
+        function exportData() {
+            const data = localStorage.getItem('gradeProgress');
+            const blob = new Blob([data], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'progreso-backup.json';
+            a.click();
+        }
+        
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.onchange = e => {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    try { localStorage.setItem('gradeProgress', ev.target.result); renderGrades(); alert('Importado OK'); } 
+                    catch (err) { alert('Error'); }
+                };
+                reader.readAsText(e.target.files[0]);
+            };
+            input.click();
+        }
+        
+        function resetAllData() {
+            if (confirm('¿Borrar todo el progreso?')) {
+                localStorage.removeItem('gradeProgress');
+                initializeData();
+                renderGrades();
+            }
+        }
+        
+        // Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('SW registrado:', reg))
+                .catch(err => console.log('SW error:', err));
+        }
+
+        // Iniciar
+        document.getElementById('gradeModal').onclick = e => { if(e.target.id === 'gradeModal') closeModal(); };
+        initializeData();
+        renderGrades();
+    </script>
+</body>
+</html>
