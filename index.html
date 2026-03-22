@@ -117,6 +117,16 @@
         .review-section { background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(239, 68, 68, 0.1)); padding: 20px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid var(--accent-orange); }
         .review-btn { background: var(--bg-card); border: 2px solid var(--accent-orange); color: var(--text-primary); padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 10px; }
 
+        /* NUEVO: Estilos para fecha y anotaciones */
+        #stageDate:focus, #stageAnnotations:focus {
+            outline: 2px solid var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        #stageAnnotations {
+            min-height: 80px;
+        }
+
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
@@ -154,6 +164,22 @@
             <div class="stage-info">
                 <div class="stage-title">📍 6 Etapas AoA (Toca la actual para completar)</div>
                 <div class="stages-grid" id="stagesGrid"></div>
+            </div>
+            
+            <!-- NUEVO: Campo de Fecha Automática -->
+            <div id="dateSection" style="background: var(--bg-card); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: none;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <label style="font-weight: 600; color: var(--accent-blue);">📅 Fecha:</label>
+                    <input type="date" id="stageDate" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--bg-secondary); background: var(--bg-secondary); color: var(--text-primary); font-family: inherit;">
+                    <span id="dateAutoLabel" style="font-size: 0.85rem; color: var(--text-secondary); font-style: italic;"></span>
+                </div>
+            </div>
+
+            <!-- NUEVO: Campo de Anotaciones -->
+            <div id="annotationsSection" style="background: var(--bg-card); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: none;">
+                <label style="font-weight: 600; color: var(--accent-blue); display: block; margin-bottom: 8px;">📝 Anotaciones para Etapa <span id="annotStageNum"></span>:</label>
+                <textarea id="stageAnnotations" rows="3" placeholder="Ej: Recordar traer material impreso, ajustar tiempo, estudiantes que necesitan apoyo..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--bg-secondary); background: var(--bg-secondary); color: var(--text-primary); font-family: 'Lexend', sans-serif; resize: vertical; font-size: 0.9rem;"></textarea>
+                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">💡 Se guarda automáticamente</small>
             </div>
             
             <div id="scenarioInfo" style="margin-bottom: 20px; background: var(--bg-card); padding: 15px; border-radius: 10px;"></div>
@@ -253,6 +279,7 @@
             
             renderStages(progress);
             renderLessons(progress);
+            hideDateAndAnnotations();
             document.getElementById('gradeModal').classList.add('active');
         }
         
@@ -266,28 +293,112 @@
                 if (stage.id < progress.currentStage) box.classList.add('completed');
                 else if (stage.id === progress.currentStage) box.classList.add('current');
                 
-                box.innerHTML = `<div class="stage-number">${stage.id}</div><div class="stage-name">${stage.name}</div>`;
+                // NUEVO: Agregar indicador si tiene anotaciones
+                const annotKey = `stage_${currentGradeId}_lesson${progress.currentLesson}_stage${stage.id}_annotations`;
+                const hasAnnotations = localStorage.getItem(annotKey) && localStorage.getItem(annotKey).trim() !== '';
+                const annotIndicator = hasAnnotations ? ' 📝' : '';
+                
+                box.innerHTML = `<div class="stage-number">${stage.id}</div><div class="stage-name">${stage.name}${annotIndicator}</div>`;
                 box.onclick = () => handleStageClick(stage.id);
                 
                 grid.appendChild(box);
             });
         }
         
+        // NUEVO: Manejar fecha automática
+        function initializeStageDate(stageId) {
+            const progress = getProgress(currentGradeId);
+            const dateKey = `stage_${currentGradeId}_lesson${progress.currentLesson}_stage${stageId}_date`;
+            const dateInput = document.getElementById('stageDate');
+            const dateLabel = document.getElementById('dateAutoLabel');
+            const dateSection = document.getElementById('dateSection');
+            
+            // Mostrar sección
+            dateSection.style.display = 'block';
+            
+            // Cargar fecha guardada o establecer automática
+            let savedDate = localStorage.getItem(dateKey);
+            if (!savedDate) {
+                const today = new Date().toISOString().split('T')[0];
+                savedDate = today;
+                localStorage.setItem(dateKey, today);
+                dateLabel.textContent = '(registrada automáticamente)';
+            } else {
+                dateLabel.textContent = '(editada)';
+            }
+            
+            dateInput.value = savedDate;
+            dateInput.disabled = false;
+            
+            // Guardar al cambiar
+            dateInput.onchange = function() {
+                localStorage.setItem(dateKey, this.value);
+                dateLabel.textContent = '(editada por usuario)';
+            };
+        }
+
+        // NUEVO: Manejar anotaciones
+        function initializeStageAnnotations(stageId) {
+            const progress = getProgress(currentGradeId);
+            const annotKey = `stage_${currentGradeId}_lesson${progress.currentLesson}_stage${stageId}_annotations`;
+            const textarea = document.getElementById('stageAnnotations');
+            const annotSection = document.getElementById('annotationsSection');
+            const stageNumSpan = document.getElementById('annotStageNum');
+            
+            // Mostrar sección
+            annotSection.style.display = 'block';
+            stageNumSpan.textContent = stageId;
+            
+            // Cargar anotaciones guardadas
+            const savedAnnotations = localStorage.getItem(annotKey) || '';
+            textarea.value = savedAnnotations;
+            textarea.disabled = false;
+            
+            // Guardar automáticamente al escribir (con debounce)
+            let timeout;
+            textarea.oninput = function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    localStorage.setItem(annotKey, this.value);
+                    // Actualizar indicador en las etapas
+                    renderStages(getProgress(currentGradeId));
+                }, 300);
+            };
+        }
+
+        // NUEVO: Ocultar secciones de fecha y anotaciones
+        function hideDateAndAnnotations() {
+            document.getElementById('dateSection').style.display = 'none';
+            document.getElementById('annotationsSection').style.display = 'none';
+        }
+        
         function handleStageClick(stageId) {
             const progress = getProgress(currentGradeId);
             
             if (stageId === progress.currentStage) {
+                // NUEVO: Inicializar fecha y anotaciones al seleccionar etapa actual
+                initializeStageDate(stageId);
+                initializeStageAnnotations(stageId);
+                
                 if (confirm(`¿Marcar Etapa ${stageId} (${aoaStages[stageId-1].name}) como COMPLETADA?`)) {
                     advanceStage();
                 }
             }
             else if (stageId < progress.currentStage) {
+                // NUEVO: Mostrar fecha y anotaciones de etapa completada (solo lectura visual)
+                initializeStageDate(stageId);
+                initializeStageAnnotations(stageId);
+                // Deshabilitar edición para etapas completadas
+                document.getElementById('stageDate').disabled = true;
+                document.getElementById('stageAnnotations').disabled = true;
+                
                 if (confirm(`Esta etapa ya fue completada. ¿Volver a la Etapa ${stageId} para repasar?`)) {
                     updateProgress(currentGradeId, { currentStage: stageId });
                     openGradeModal(currentGradeId);
                 }
             }
             else {
+                hideDateAndAnnotations();
                 alert('⚠️ Debes completar las etapas anteriores primero.');
             }
         }
@@ -295,8 +406,14 @@
         function advanceStage() {
             const progress = getProgress(currentGradeId);
             if (progress.currentStage < 6) {
-                updateProgress(currentGradeId, { currentStage: progress.currentStage + 1 });
+                const newStage = progress.currentStage + 1;
+                updateProgress(currentGradeId, { currentStage: newStage });
                 openGradeModal(currentGradeId);
+                // NUEVO: Inicializar fecha y anotaciones para la nueva etapa
+                setTimeout(() => {
+                    initializeStageDate(newStage);
+                    initializeStageAnnotations(newStage);
+                }, 100);
             } else {
                 markLessonComplete();
             }
@@ -344,7 +461,12 @@
             }
         }
         
-        function closeModal() { document.getElementById('gradeModal').classList.remove('active'); }
+        function closeModal() { 
+            hideDateAndAnnotations();
+            document.getElementById('stageDate').disabled = false;
+            document.getElementById('stageAnnotations').disabled = false;
+            document.getElementById('gradeModal').classList.remove('active'); 
+        }
         
         function exportData() {
             const data = localStorage.getItem('gradeProgress');
